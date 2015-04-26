@@ -1,0 +1,62 @@
+---
+title: "Building a Model to Predict Weight Lifting Exercise Performance"
+author: "Jessica Lethbridge"
+date: "21 April 2015"
+output: html_document
+---
+##Executive Summary
+This work will build a model to classify how well a weight lifting exercise was performed. Data from weight lifting exercises which were classified with an indication of how well the exercised was performed will be used to build this model. This model will be evaluated for accuracy and then used to predict 20 test cases. 
+
+
+##Method
+First necessary libraries and the dataset are loaded.
+
+```{r message=FALSE}
+library(caret)
+library(randomForest)
+library(dplyr)
+```
+
+```{r cache=TRUE}
+temp <- tempfile()
+download.file("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv",temp)
+data <- read.csv(temp)
+unlink(temp)
+```
+
+The first 7 variables are removed from the dataset because they are timestamps and test subject identification. The variables containing kurtosis, skewness, amplitude, mean, varience, standard deviation, maximums and minimums are removed as they are calculated from the measured variables and contain a lot of NAs, no values and error messages which will interfere with the model building process. 
+
+```{r}
+data<-select(data, -(1:7), -(grep("kurtosis",names(data))), -(grep("skewness",names(data))), 
+             -(grep("amplitude",names(data))), -(grep("avg",names(data))),-(grep("var",names(data))),
+             -(grep("stddev",names(data))),-(grep("max",names(data))),-(grep("min",names(data))))
+```
+
+Once the unneeded variables are removed the data is split into a training and testing set.
+
+```{r}
+inTrain<-createDataPartition(y=data$classe, p=.7,list=F)
+training<-data[inTrain,]
+testing<-data[-inTrain,]
+set.seed(33)
+```
+
+The model is then trained on the training set using the random forest method with 4 fold cross validation. 
+
+```{r cache=TRUE}
+tc<-trainControl(method="cv", number=4)
+model<-train(classe~., method="rf", trainControl = tc, data=training)
+```
+
+##Assessment
+```{r}
+model$finalModel
+```
+
+The created model has a cross validation estimated out of sample error of 0.69%. 
+
+```{r}
+confusionMatrix(testing$classe, predict(model, testing))
+```
+
+Testing the trained model against the reserved testing set shows an accuracy of 99.35%, an out of sample error of 0.65%. 
